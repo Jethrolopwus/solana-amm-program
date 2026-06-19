@@ -5,7 +5,10 @@ resolution = true
 skip-lint = false
 
 [programs.devnet]
-amm_program = "3qG8aCYzpznPiyDBWcUx5kXW2xqxwWPNp7eRoDg7NiYz"
+amm_program = "6hUoxA8ETxkyuJWYBpyGcnho4VxBJGGuqeZ4wWYA7c3E"
+
+[programs.localnet]
+amm_program = "6hUoxA8ETxkyuJWYBpyGcnho4VxBJGGuqeZ4wWYA7c3E"
 
 [registry]
 url = "https://api.apr.dev"
@@ -19,3 +22,5 @@ test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
 
 [test]
 startup_wait = 5000
+shutdown_wait = 2000
+upgradeable = false

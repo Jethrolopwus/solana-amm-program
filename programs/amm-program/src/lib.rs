@@ -3,11 +3,13 @@ use anchor_lang::prelude::*;
 
 pub mod state;
 pub mod error;
+pub mod events;
 pub mod contexts;
 
 pub use contexts::*;
+pub use events::*;
 
-declare_id!("3qG8aCYzpznPiyDBWcUx5kXW2xqxwWPNp7eRoDg7NiYz");
+declare_id!("6hUoxA8ETxkyuJWYBpyGcnho4VxBJGGuqeZ4wWYA7c3E");
 
 #[program]
 pub mod amm_program {
@@ -19,8 +21,7 @@ pub mod amm_program {
         fee: u16,
         authority: Option<Pubkey>,
     ) -> Result<()> {
-        ctx.accounts.init(seed, fee, authority, &ctx.bumps)?;
-        Ok(())
+        ctx.accounts.init(seed, fee, authority, &ctx.bumps)
     }
 
     pub fn deposit(
@@ -29,8 +30,7 @@ pub mod amm_program {
         max_x: u64,
         max_y: u64,
     ) -> Result<()> {
-        ctx.accounts.deposit(lp_amount, max_x, max_y)?;
-        Ok(())
+        ctx.accounts.deposit(lp_amount, max_x, max_y)
     }
 
     pub fn withdraw(
@@ -39,12 +39,18 @@ pub mod amm_program {
         min_x: u64,
         min_y: u64,
     ) -> Result<()> {
-        ctx.accounts.withdraw(lp_amount, min_x, min_y)?;
-        Ok(())
+        ctx.accounts.withdraw(lp_amount, min_x, min_y)
     }
 
     pub fn swap(ctx: Context<Swap>, args: SwapArgs) -> Result<()> {
-        ctx.accounts.swap(args)?;
-        Ok(())
+        ctx.accounts.swap(args)
+    }
+
+    pub fn lock_pool(ctx: Context<LockPool>) -> Result<()> {
+        ctx.accounts.lock()
+    }
+
+    pub fn unlock_pool(ctx: Context<LockPool>) -> Result<()> {
+        ctx.accounts.unlock()
     }
 }

@@ -1,8 +1,9 @@
 use anchor_lang::prelude::*;
 use anchor_spl::{
-    associated_token::AssociatedToken,
-    token::{Mint, Token, TokenAccount},
+    associated_token::{create as ata_create, AssociatedToken, Create},
+    token_interface::{Mint, TokenInterface},
 };
+use crate::events::PoolInitialized;
 use crate::state::Config;
 
 #[derive(Accounts)]
@@ -11,8 +12,8 @@ pub struct Initialize<'info> {
     #[account(mut)]
     pub initializer: Signer<'info>,
 
-    pub mint_x: Box<Account<'info, Mint>>,
-    pub mint_y: Box<Account<'info, Mint>>,
+    pub mint_x: Box<InterfaceAccount<'info, Mint>>,
+    pub mint_y: Box<InterfaceAccount<'info, Mint>>,
 
     #[account(
         init,
@@ -22,25 +23,15 @@ pub struct Initialize<'info> {
         mint::decimals = 6,
         mint::authority = config,
     )]
-    pub mint_lp: Box<Account<'info, Mint>>,
+    pub mint_lp: Box<InterfaceAccount<'info, Mint>>,
 
-    #[account(
-        init,
-        payer = initializer,
-        associated_token::mint = mint_x,
-        associated_token::authority = config,
-        associated_token::token_program = token_program,
-    )]
-    pub vault_x: Box<Account<'info, TokenAccount>>,
+    /// CHECK: created via CPI in handler
+    #[account(mut)]
+    pub vault_x: UncheckedAccount<'info>,
 
-    #[account(
-        init,
-        payer = initializer,
-        associated_token::mint = mint_y,
-        associated_token::authority = config,
-        associated_token::token_program = token_program,
-    )]
-    pub vault_y: Box<Account<'info, TokenAccount>>,
+    /// CHECK: created via CPI in handler
+    #[account(mut)]
+    pub vault_y: UncheckedAccount<'info>,
 
     #[account(
         init,
@@ -56,7 +47,7 @@ pub struct Initialize<'info> {
     )]
     pub config: Box<Account<'info, Config>>,
 
-    pub token_program: Program<'info, Token>,
+    pub token_program: Interface<'info, TokenInterface>,
     pub system_program: Program<'info, System>,
     pub associated_token_program: Program<'info, AssociatedToken>,
 }
@@ -69,6 +60,32 @@ impl<'info> Initialize<'info> {
         authority: Option<Pubkey>,
         bumps: &InitializeBumps,
     ) -> Result<()> {
+        // Create vault_x ATA
+        ata_create(CpiContext::new(
+            self.associated_token_program.to_account_info(),
+            Create {
+                payer: self.initializer.to_account_info(),
+                associated_token: self.vault_x.to_account_info(),
+                authority: self.config.to_account_info(),
+                mint: self.mint_x.to_account_info(),
+                system_program: self.system_program.to_account_info(),
+                token_program: self.token_program.to_account_info(),
+            },
+        ))?;
+
+        // Create vault_y ATA
+        ata_create(CpiContext::new(
+            self.associated_token_program.to_account_info(),
+            Create {
+                payer: self.initializer.to_account_info(),
+                associated_token: self.vault_y.to_account_info(),
+                authority: self.config.to_account_info(),
+                mint: self.mint_y.to_account_info(),
+                system_program: self.system_program.to_account_info(),
+                token_program: self.token_program.to_account_info(),
+            },
+        ))?;
+
         self.config.set_inner(Config {
             seed,
             authority,
@@ -79,6 +96,14 @@ impl<'info> Initialize<'info> {
             config_bump: bumps.config,
             lp_bump: bumps.mint_lp,
         });
+
+        emit!(PoolInitialized {
+            config: self.config.key(),
+            mint_x: self.mint_x.key(),
+            mint_y: self.mint_y.key(),
+            fee,
+        });
+
         Ok(())
     }
 }

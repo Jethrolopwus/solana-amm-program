@@ -3,6 +3,7 @@ use anchor_spl::associated_token::AssociatedToken;
 use anchor_spl::token::{transfer_checked, MintTo, mint_to, TransferChecked};
 use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
 use constant_product_curve::ConstantProduct;
+use crate::events::LiquidityAdded;
 use crate::state::Config;
 use crate::error::AmmError;
 
@@ -116,6 +117,14 @@ impl<'info> Deposit<'info> {
         self.deposit_token(true, x)?;
         self.deposit_token(false, y)?;
         self.mint_lp_tokens(lp_amount)?;
+
+        emit!(LiquidityAdded {
+            config: self.config.key(),
+            lp_provider: self.lp_provider.key(),
+            amount_x: x,
+            amount_y: y,
+            lp_minted: lp_amount,
+        });
 
         Ok(())
     }
